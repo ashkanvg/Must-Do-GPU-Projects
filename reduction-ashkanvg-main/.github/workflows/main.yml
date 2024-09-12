@@ -1,0 +1,60 @@
+name: CI Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+    
+    timeout-minutes: 20
+    
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      #    with:
+        # submodules: recursive
+
+      # Runs a single command using the runners shell
+      - name: Compiling repo
+        run: |
+          make clean
+          make
+  
+  test:
+    runs-on: self-hosted
+
+    timeout-minutes: 20
+
+    needs: build
+
+    steps:
+   
+      # Checks Naive Reduction 
+      - name: Checking Naive Reduction
+        run: |
+          ./reduction &> naive.output 
+          tail -n3 naive.output | diff .github/test/reduction.solution -
+        if: always()
+        
+      # Checks Optimized Reduction 
+      - name: Checking Optimized Reduction
+        run: |
+          ./reduction-optimized &> optimized.output 
+          tail -n3 optimized.output | diff .github/test/reduction.solution -
+        if: always()
+
+  cleanup:
+    
+    runs-on: self-hosted
+    if: always()
+    needs: [build,test]
+    steps:
+      - name: Clean up
+        run: echo "Cleaning up previous run"; rm -rf "${{ github.workspace }}";
+

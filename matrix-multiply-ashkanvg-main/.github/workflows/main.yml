@@ -1,0 +1,65 @@
+name: CI Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+    
+    timeout-minutes: 20
+    
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      #    with:
+        # submodules: recursive
+
+      # Runs a single command using the runners shell
+      - name: Compiling repo
+        run: |
+          make clean
+          make
+  
+  test:
+    runs-on: self-hosted
+
+    timeout-minutes: 20
+
+    needs: build
+
+    steps:
+   
+      # Checks VectorAdd of 1000 elements 
+      - name: Checking Matrix Multiply - 128 square
+        run: |
+          ./sgemm-tiled 128 &> square.out
+          tail -n 2 square.out | diff .github/test/square.solution -
+        if: always()
+
+      - name: Checking Matrix Multiply - 128 256 rectangle
+        run: |
+          ./sgemm-tiled 128 256 256 &> rectangle.out
+          tail -n 2 rectangle.out | diff .github/test/rectangle.solution -
+        if: always()
+
+      - name: Checking Matrix Multiply - 120 201 250 odd shape
+        run: |
+          ./sgemm-tiled 120 201 250 &> odd.out
+          tail -n 2 odd.out | diff .github/test/odd.solution -
+        if: always()
+        
+  cleanup:
+    
+    runs-on: self-hosted
+    if: always()
+    needs: [build,test]
+    steps:
+      - name: Clean up
+        run: echo "Cleaning up previous run"; rm -rf "${{ github.workspace }}";
+

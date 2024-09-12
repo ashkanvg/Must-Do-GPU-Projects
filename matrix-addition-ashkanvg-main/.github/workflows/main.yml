@@ -1,0 +1,59 @@
+name: CI Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+    
+    timeout-minutes: 20
+    
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      #    with:
+        # submodules: recursive
+
+      # Runs a single command using the runners shell
+      - name: Compiling repo
+        run: |
+          make clean
+          make
+  
+  test:
+    runs-on: self-hosted
+
+    timeout-minutes: 20
+
+    needs: build
+
+    steps:
+   
+      # Checks MatrixAdd of 1000 elements 
+      - name: Checking Matrix Add - 1000 square
+        run: |
+          ./mat-add 1000 &> 1000.out
+          tail -n 3 1000.out | diff .github/test/1000.solution -
+        if: always()
+
+      - name: Checking Matrix Add - 10000 square
+        run: |
+          ./mat-add 10000 &> 10000.out
+          tail -n 3 10000.out | diff .github/test/10000.solution -
+        if: always()
+        
+        
+  cleanup:
+    
+    runs-on: self-hosted
+    if: always()
+    needs: [build,test]
+    steps:
+      - name: Clean up
+        run: echo "Cleaning up previous run"; rm -rf "${{ github.workspace }}";
